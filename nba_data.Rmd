@@ -1,0 +1,858 @@
+---
+title: "nba"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r cars}
+#devtools::install_github("abresler/nbastatR",force=TRUE)
+
+#library("nbastatR")
+
+library(nbastatR)
+library(future)
+library(dplyr)
+library(factoextra)
+library(cluster)
+library(NbClust)
+#plan(multiprocess) 
+#df<-game_logs(seasons = 2019,
+#              league="NBA",
+#              result_types = "player",
+#              season_types = "Regular Season")
+
+
+
+setwd("/Users/qmaclean/Desktop/")
+
+#filtered for padres #
+lastseason<-read.csv(file="2019season.csv",head=TRUE,sep=",")
+lastseason_opp<-read.csv(file="2019opponentstats.csv",head=TRUE,sep=",")
+currentseason<-read.csv(file="2020totalstats.csv",head=TRUE,sep=",")
+currentseason_opp<-read.csv(file="2020opponentsstats.csv",head=TRUE,sep=",")
+
+colnames(lastseason_opp)<-paste("opp",colnames(lastseason_opp),sep="_")
+colnames(currentseason_opp)<-paste("opp",colnames(currentseason_opp),sep="_")
+
+currentseason<-currentseason %>%
+  inner_join(currentseason_opp,currentseason,by=c("Team" = "opp_Team"))
+
+lastseason<-lastseason %>%
+  inner_join(lastseason_opp,lastseason,by=c("Team"="opp_Team"))
+
+currentseason_opp<-""
+lastseason_opp<-""
+
+ffactors<-read.csv(file="misc_stats.csv",head=TRUE,sep=",")
+
+ffactors_lastseason<-read.csv(file="ffactors_lastseason.csv",head=TRUE,sep=",")
+
+
+library(ballr)
+current<-NBAPerGameStatistics(season=2020)
+
+
+####Bring in 20 years data ####
+pergame<-NBAPerGameStatistics(season = 2019)
+pergame$yr<-2019
+
+perAdv<-NBAPerGameAdvStatistics(season = 2019)
+perAdv$yr<-2019
+
+lastseason_pergame<-pergame
+
+pergame_a<-NBAPerGameStatistics(season = 2018)
+pergame_a$yr<-2018
+
+perAdv_a<-NBAPerGameAdvStatistics(season = 2018)
+perAdv_a$yr<-2018
+
+
+pergame<-rbind(pergame,pergame_a)
+perAdv<-rbind(perAdv,perAdv_a)
+
+#2017
+pergame_a<-""
+perAdv_a<-""
+pergame_a<-NBAPerGameStatistics(season = 2017)
+perAdv_a<-NBAPerGameAdvStatistics(season = 2017)
+pergame_a$yr<-2017
+perAdv_a$yr<-2017
+
+pergame<-rbind(pergame,pergame_a)
+perAdv<-rbind(perAdv,perAdv_a)
+
+#2016
+pergame_a<-""
+perAdv_a<-""
+pergame_a<-NBAPerGameStatistics(season = 2016)
+perAdv_a<-NBAPerGameAdvStatistics(season = 2016)
+pergame_a$yr<-2016
+perAdv_a$yr<-2016
+
+pergame<-rbind(pergame,pergame_a)
+perAdv<-rbind(perAdv,perAdv_a)
+
+#2015
+pergame_a<-""
+perAdv_a<-""
+pergame_a<-NBAPerGameStatistics(season = 2015)
+perAdv_a<-NBAPerGameAdvStatistics(season = 2015)
+pergame_a$yr<-2015
+perAdv_a$yr<-2015
+
+pergame<-rbind(pergame,pergame_a)
+perAdv<-rbind(perAdv,perAdv_a)
+
+#2014
+pergame_a<-""
+perAdv_a<-""
+pergame_a<-NBAPerGameStatistics(season = 2014)
+perAdv_a<-NBAPerGameAdvStatistics(season = 2014)
+pergame_a$yr<-2014
+perAdv_a$yr<-2014
+
+pergame<-rbind(pergame,pergame_a)
+perAdv<-rbind(perAdv,perAdv_a)
+
+#2013
+pergame_a<-""
+perAdv_a<-""
+pergame_a<-NBAPerGameStatistics(season = 2013)
+perAdv_a<-NBAPerGameAdvStatistics(season = 2013)
+pergame_a$yr<-2013
+perAdv_a$yr<-2013
+
+pergame<-rbind(pergame,pergame_a)
+perAdv<-rbind(perAdv,perAdv_a)
+
+#2012
+pergame_a<-""
+perAdv_a<-""
+pergame_a<-NBAPerGameStatistics(season = 2012)
+perAdv_a<-NBAPerGameAdvStatistics(season = 2012)
+pergame_a$yr<-2012
+perAdv_a$yr<-2012
+
+pergame<-rbind(pergame,pergame_a)
+perAdv<-rbind(perAdv,perAdv_a)
+
+#2011
+pergame_a<-""
+perAdv_a<-""
+pergame_a<-NBAPerGameStatistics(season = 2011)
+perAdv_a<-NBAPerGameAdvStatistics(season = 2011)
+pergame_a$yr<-2011
+perAdv_a$yr<-2011
+
+pergame<-rbind(pergame,pergame_a)
+perAdv<-rbind(perAdv,perAdv_a)
+
+#2010
+pergame_a<-""
+perAdv_a<-""
+pergame_a<-NBAPerGameStatistics(season = 2010)
+perAdv_a<-NBAPerGameAdvStatistics(season = 2010)
+pergame_a$yr<-2010
+perAdv_a$yr<-2010
+
+pergame<-rbind(pergame,pergame_a)
+perAdv<-rbind(perAdv,perAdv_a)
+
+
+perAdv<-subset(perAdv,select=c("player","tm","per","tspercent","x3par","ftr","orbpercent","drbpercent","trbpercent",
+"astpercent","stlpercent","blkpercent","tovpercent","usgpercent","ows","dws","ws","ws_48","x_2","obpm","dbpm","bpm","vorp","yr"))
+
+pergame<- pergame %>%
+  inner_join(perAdv,pergame,by=c("player","yr","tm"))
+
+perAdv_a<-""
+pergame_a<-""
+perAdv<-""
+
+pergame<-subset(pergame,pergame$tm != 'TOT')
+
+
+```
+
+
+```{r mod1}
+#EFG calculation
+ffactors_lastseason<-subset(ffactors_lastseason,ffactors_lastseason$Team != 'League Average')
+ffactors_lastseason<-subset(ffactors_lastseason,complete.cases(ffactors_lastseason$Team))
+
+ffactors<-subset(ffactors,ffactors$Team != 'League Average')
+ffactors<-subset(ffactors,complete.cases(ffactors$Team))
+
+
+
+###### 
+
+#current season
+#ffactors$GW_pred<-(41.06) +
+#  (351.88*(ffactors$Off_eFG.-ffactors$Def_eFG.)) + 
+#  (333.06*(ffactors$Off_TOV.-ffactors$Def_TOV.)) +
+#  (130.61*(ffactors$Off_ORB.-ffactors$Def_DRB.)) +
+#  (44.43*(ffactors$Off_FT.FGA - ffactors$Def_FT.FGA))
+
+#### EFG ####
+EFG_ls<- ffactors_lastseason %>%
+  mutate(OEFGrank = dense_rank(desc(Off_eFG.)),
+         DEFGrank = dense_rank(desc(Def_eFG.)))
+
+EFG_ls<-subset(EFG_ls,select=c("Team","W","L","Off_eFG.","Def_eFG.","OEFGrank","DEFGrank"))
+EFG_ls$year<-"2019"
+EFG_ls<-subset(EFG_ls,EFG_ls$Team == 'Portland Trail Blazers*')
+
+EFG_cs<-ffactors %>%
+  mutate(OEFGrank = dense_rank(desc(Off_eFG.)),
+         DEFGrank = dense_rank(desc(Def_eFG.)))
+
+EFG_cs<-subset(EFG_cs,select=c("Team","W","L","Off_eFG.","Def_eFG.","OEFGrank","DEFGrank"))
+EFG_cs$year<-"2020"
+EFG_cs
+EFG_cs<-subset(EFG_cs,EFG_cs$Team == 'Portland Trail Blazers')
+
+
+EFG<-rbind(EFG_ls,EFG_cs)
+EFG
+
+formattable(EFG, align = c("l", "c", "c", "c", "c", "r"),
+            list(`Indicator Name` = formatter("span", style = ~style(color = "grey", font.weight = "bold"))
+            ))
+
+###TOV ####
+TOV_ls<- ffactors_lastseason %>%
+  mutate(OTOVrank = dense_rank(desc(Off_TOV.)),
+         DTOVrank = dense_rank(desc(Def_TOV.)))
+
+TOV_ls<-subset(TOV_ls,select=c("Team","W","L","Off_TOV.","Def_TOV.","OTOVrank","DTOVrank"))
+TOV_ls$year<-"2019"
+TOV_ls<-subset(TOV_ls,TOV_ls$Team == 'Portland Trail Blazers*')
+
+TOV_cs<-ffactors %>%
+  mutate(OTOVrank = dense_rank(desc(Off_TOV.)),
+         DTOVrank = dense_rank(desc(Def_TOV.)))
+
+TOV_cs<-subset(TOV_cs,select=c("Team","W","L","Off_TOV.","Def_TOV.","OTOVrank","DTOVrank"))
+TOV_cs$year<-"2020"
+TOV_cs
+TOV_cs<-subset(TOV_cs,TOV_cs$Team == 'Portland Trail Blazers')
+
+TOV<-rbind(TOV_ls,TOV_cs)
+TOV
+
+formattable(TOV, align = c("l", "c", "c", "c", "c", "r"),
+            list(`Indicator Name` = formatter("span", style = ~style(color = "grey", font.weight = "bold"))
+            ))
+
+#####RB ###
+RB_ls<- ffactors_lastseason %>%
+  mutate(ORBrank = dense_rank(desc(Off_ORB.)),
+         DRBrank = dense_rank(desc(Def_DRB.)))
+
+RB_ls<-subset(RB_ls,select=c("Team","W","L","Off_ORB.","Def_DRB.","ORBrank","DRBrank"))
+RB_ls$year<-"2019"
+RB_ls<-subset(RB_ls,RB_ls$Team == 'Portland Trail Blazers*')
+
+RB_cs<-ffactors %>%
+  mutate(ORBrank = dense_rank(desc(Off_ORB.)),
+         DRBrank = dense_rank(desc(Def_DRB.)))
+
+RB_cs<-subset(RB_cs,select=c("Team","W","L","Off_ORB.","Def_DRB.","ORBrank","DRBrank"))
+RB_cs$year<-"2020"
+RB_cs
+RB_cs<-subset(RB_cs,RB_cs$Team == 'Portland Trail Blazers')
+
+RB<-rbind(RB_ls,RB_cs)
+RB
+
+formattable(RB, align = c("l", "c", "c", "c", "c", "r"),
+            list(`Indicator Name` = formatter("span", style = ~style(color = "grey", font.weight = "bold"))
+            ))
+
+###FT_FGA ###
+FT_ls<- ffactors_lastseason %>%
+  mutate(OFTrank = dense_rank(desc(Off_FT.FGA)),
+         DFTrank = dense_rank(desc(Def_FT.FGA)))
+
+FT_ls<-subset(FT_ls,select=c("Team","W","L","Off_FT.FGA","Def_FT.FGA","OFTrank","DFTrank"))
+FT_ls$year<-"2019"
+FT_ls<-subset(FT_ls,FT_ls$Team == 'Portland Trail Blazers*')
+
+FT_cs<-ffactors %>%
+  mutate(OFTrank = dense_rank(desc(Off_FT.FGA)),
+         DFTrank = dense_rank(desc(Def_FT.FGA)))
+
+FT_cs<-subset(FT_cs,select=c("Team","W","L","Off_FT.FGA","Def_FT.FGA","OFTrank","DFTrank"))
+FT_cs$year<-"2020"
+FT_cs
+FT_cs<-subset(FT_cs,FT_cs$Team == 'Portland Trail Blazers')
+
+FT<-rbind(FT_ls,FT_cs)
+FT
+
+formattable(FT, align = c("l", "c", "c", "c", "c", "r"),
+            list(`Indicator Name` = formatter("span", style = ~style(color = "grey", font.weight = "bold"))
+            ))
+
+
+por<-subset(pergame,pergame$tm == 'POR')
+por<-subset(por,por$yr == '2019')
+por<-subset(por,select=c('player','pos','age','mp','orb','drb','trb','pts'))
+por
+
+formattable(por, align = c("l", "c", "c", "c", "c", "r"),
+            list(`Indicator Name` = formatter("span", style = ~style(color = "grey", font.weight = "bold"))
+            ))
+
+por_cur<-subset(current,current$tm == 'POR')
+por_cur<-subset(por_cur,select=c('player','pos','age','mp','orb','drb','trb','pts'))
+
+formattable(por_cur, align = c("l", "c", "c", "c", "c", "r"),
+            list(`Indicator Name` = formatter("span", style = ~style(color = "grey", font.weight = "bold"))
+            ))
+
+```
+
+```{r mod2}      
+
+##### section 2 #####last season games won
+ffactors_lastseason<-subset(ffactors_lastseason,complete.cases(ffactors_lastseason))
+ffactors_lastseason$EFG<-(ffactors_lastseason$Off_eFG. - ffactors_lastseason$Def_eFG.)
+ffactors_lastseason$TOV<-(ffactors_lastseason$Off_TOV. - ffactors_lastseason$Def_TOV.)
+ffactors_lastseason$RB<-(ffactors_lastseason$Off_ORB. - ffactors_lastseason$Def_DRB.)
+ffactors_lastseason$FT_FGA<-(ffactors_lastseason$Off_FT.FGA - ffactors_lastseason$Def_FT.FGA)
+
+n.total<-nrow(ffactors_lastseason)
+
+ffactors_lastseason$u<-runif(n=n.total,min=0,max=1)
+
+#test/train
+data.train<-subset(ffactors_lastseason,u < 0.70)
+data.test<-subset(ffactors_lastseason, u >= 0.70)
+
+gw_pred<-lm(W ~ EFG + TOV + RB + FT_FGA,data = data.train)
+
+summary(gw_pred)
+
+AIC(gw_pred)
+
+
+data.train$gw_pred<-predict(gw_pred,newdata=data.train)
+
+data.train$gw_pred
+
+
+####test set ###
+data.test$gw_pred<-predict(gw_pred,newdata=data.test)
+
+gw_residuals<-data.test$W - data.test$gw_pred
+gw_residuals
+plot(gw_residuals)
+
+sqrt(mean(gw_residuals^2))
+
+#### 3 games off ##
+
+data.test$residuals<-data.test$W - data.test$gw_pred
+data.train$residuals<-data.train$W - data.train$gw_pred
+
+df1<-rbind(data.test,data.train)
+
+
+blazers<-subset(df1,df1$Team == 'Portland Trail Blazers*')
+
+blazers
+blazers<-subset(blazers,select=c("Team","W","L","EFG","TOV","RB","FT_FGA","gw_pred","residuals"))
+
+
+
+formattable(blazers, align = c("l", "c", "c", "c", "c", "r"),
+            list(`Indicator Name` = formatter("span", style = ~style(color = "grey", font.weight = "bold"))
+            ))
+
+mean(df1$RB)
+mean(df1$EFG)
+mean(df1$TOV)
+mean(df1$FT_FGA)
+
+por2<-subset(pergame,pergame$tm == 'POR')
+por2<-subset(por2,por2$yr == '2019')
+por2
+
+por2<-subset(por2,select=c("player","pos","g","mp","efgpercent","per"))
+
+formattable(por2, align = c("l", "c", "c", "c", "c", "r"),
+            list(`Indicator Name` = formatter("span", style = ~style(color = "grey", font.weight = "bold"))
+            ))
+
+a<-subset(pergame,pergame$yr == '2019')
+a<-subset(a,a$g > 20)
+
+mean(a$efgpercent)
+
+
+
+```
+
+
+
+```{r class1}
+
+#df<-subset(pergame,pergame$g >= 20)
+
+ggplot(pergame, aes(g, y = ..density..)) +
+  geom_histogram(aes(fill = ..count..)) +
+  geom_density(col = "orange", lwd = 1) 
+
+#bimodal let's subset g> 30, which would be more than a 1/3
+
+df<-subset(pergame,pergame$g >= 30)
+
+#let's remove age, g, gs, x2p; seems redundant with fg & pts. 
+#ows, dws, ws, ws, opm, dbpm, bpm, vorp seem to custom or indexed of metrics to include as well 
+
+df<-subset(df,select=c("player","fg","fga","fgpercent","x3p","x3ppercent","efgpercent","ft","fta","ftpercent","orb","drb","trb","ast","stl","blk","tov","pf","pts","tspercent","ftr","orbpercent","drbpercent","trbpercent","astpercent","stlpercent","blkpercent","tovpercent","yr"))
+
+
+perGame_cor<-cor(df[,2:28])
+
+
+ggcorrplot::ggcorrplot(perGame_cor,
+                       type="lower",
+                       method="square",
+                       colors=c("red","white","light green"),
+                       lab_size = 2,
+                       title = "Correlogram")
+
+#EDA 
+
+#FG
+ggplot(df, aes(fg, y = ..density..)) +
+  geom_histogram(aes(fill = ..count..)) +
+  geom_density(col = "orange", lwd = 1) 
+
+#fgpercent
+ggplot(df, aes(fgpercent, y = ..density..)) +
+  geom_histogram(aes(fill = ..count..)) +
+  geom_density(col = "orange", lwd = 1) 
+
+#x3p
+ggplot(df, aes(x3ppercent, y = ..density..)) +
+  geom_histogram(aes(fill = ..count..)) +
+  geom_density(col = "orange", lwd = 1) 
+
+#orb ## potential cluster
+ggplot(df, aes(orb, y = ..density..)) +
+  geom_histogram(aes(fill = ..count..)) +
+  geom_density(col = "orange", lwd = 1) 
+
+#trb
+ggplot(df, aes(trb, y = ..density..)) +
+  geom_histogram(aes(fill = ..count..)) +
+  geom_density(col = "orange", lwd = 1) 
+
+
+
+
+
+
+#x=na.omit(df[,2:42])
+
+
+nba.pca <- princomp(x=scale(na.omit(df[,2:28])),cor=TRUE)
+# See the output components returned by princomp();
+names(nba.pca)
+
+pc.1 <- nba.pca$loadings[,1];
+pc.1
+pc.2 <- nba.pca$loadings[,2];
+pc.2
+names(pc.1)
+names(pc.2)
+
+
+plot(pc.1,pc.2)
+plot(nba.pca)
+
+# Make Scree Plot
+scree.values <- (nba.pca$sdev^2)/sum(nba.pca$sdev^2)
+scree.values
+
+fviz_screeplot(nba.pca,addlabels=TRUE)
+
+#4 dimensions seems to be where the difference becomes very marginal.
+
+#let's cluster off of those values
+
+
+nbapca.scores <- as.data.frame(nba.pca$scores)
+nbapca.scores
+
+#return.scores <- as.data.frame(returns.pca$scores);
+
+nbavar<-get_pca_var(nba.pca)
+#1st PCA
+fviz_contrib(nba.pca,choice="var",axes=1,top=10)
+#2nd PCA
+fviz_contrib(nba.pca,choice="var",axes=2,top=10)
+#3rd PCA
+fviz_contrib(nba.pca,choice="var",axes=3,top=10)
+
+
+
+#nba.pca
+
+
+
+####Let's explore kmeans method & then bring back in PCA to create the clusters
+
+#k-means # 
+#### let's do 6 since that is known ###
+
+df$rownames<-row.names(df)
+df1<-df
+
+df1$player<-row.names(df1[,1])
+df1<-na.omit(df1[,1:30])
+
+df1$player<-as.numeric(df1$player)
+df1$rownames<-as.numeric(df1$rownames)
+#str(df1)
+
+#df1<-scale(df1)
+kpergame<-na.omit(df1[,2:28])
+#kerpgame<-scale(kpergame)
+
+
+#check 5 to see how it is scattered; lot of overlap. 
+k1<-kmeans(kpergame,centers=5)
+k1
+fviz_cluster(k1,data=kpergame,geom="point")
+
+#optimize amount of clusters
+fviz_nbclust(kpergame,kmeans, method = "wss")
+
+
+
+
+#mirrors our scree plot; using "elbow technique" it looks like 3 has the significant drop-off point
+k2<-kmeans(kpergame,center=3)
+print(k2)
+
+#sum of squares by cluster is 42.9%, which is really low; let's find a higher score
+
+fviz_cluster(k2,data=kpergame,geom="point")
+
+#using PCA
+k3<-kmeans(kpergame,center=8)
+print(k3)
+
+#sum of squares is 64.2% 
+
+#####Let's use the PCA to optimize the clusters & join back to the df dataset ####
+
+#nba.pca
+nbapca.score2<-subset(nbapca.scores,select=c("Comp.1","Comp.2","Comp.3","Comp.4"))
+
+fviz_nbclust(nbapca.score2,kmeans, method = "wss")
+
+k4<-kmeans(nbapca.score2,centers=5)
+k5<-kmeans(nbapca.score2,centers=8)
+
+fviz_cluster(k4,data=kpergame,geom="point")
+fviz_cluster(k5,data=kpergame,geom="point")
+
+
+
+
+opt_cluster<-k5$cluster
+
+opt_cluster<-data.table(rownames(k5$cluster),k5$cluster)
+opt_cluster$rownames<-seq.int(nrow(opt_cluster))
+
+df<-na.omit(df[,1:30])
+
+df$rownames<-as.integer(df$rownames)
+opt_cluster$rownames<-as.integer(opt_cluster$rownames)
+
+str(opt_cluster)
+df<- df %>%
+  inner_join(opt_cluster,df,by="rownames")
+
+
+######## NOT THE RESULT WE WANTED ######
+
+#### LET'S REDO WITH PROPER SCALING ###
+
+
+
+##### why is Boban Marjanović; check on row anems calculations
+
+#kscale<-dist(scale(kpergame))
+#clust<-hclust(kscale)
+
+#plot(clust)
+
+
+#subset last season ##
+df3<-subset(df,df$yr == '2019')
+
+
+#1 
+first_cluster<-subset(df3,df3$V1 == '1')
+first_cluster
+#2
+second_cluster<-subset(df3,df3$V1 == '2')
+second_cluster
+#3
+third_cluster<-subset(df3,df3$V1 == '3')
+third_cluster
+#4
+
+######## METHOD DOESN"T WORK ##### REDONE BELOW
+
+
+####### THIS SECTION SHOWS ACTUALLY KMEANS VALUE ####
+
+
+
+newdf<-subset(pergame,pergame$g >= 30)
+
+#take out percent values #
+
+newdf<-subset(newdf,select=c("player","mp","fg","fga","fgpercent","x3p","x3pa","x3ppercent","x2p","x2pa","x2ppercent","efgpercent","ft","fta","ftpercent","orb","drb","trb","ast","stl","blk","tov","pf","pts","tspercent","ftr","orbpercent","drbpercent","trbpercent","astpercent","stlpercent","blkpercent","tovpercent","obpm","dbpm","bpm","vorp","yr"))
+
+###let's scale all of the variables ####
+newdf$mp<-scale(newdf$mp)
+newdf$fg<-scale(newdf$fg)
+newdf$fga<-scale(newdf$fga)
+newdf$fgpercent<-scale(newdf$fgpercent)
+newdf$x3p<-scale(newdf$x3p)
+newdf$x3pa<-scale(newdf$x3pa)
+newdf$x3ppercent<-scale(newdf$x3ppercent)
+newdf$x2p<-scale(newdf$x2p)
+newdf$x2pa<-scale(newdf$x2pa)
+newdf$x2ppercent<-scale(newdf$x2ppercent)
+newdf$efgpercent<-scale(newdf$efgpercent)
+newdf$ft<-scale(newdf$ft)
+newdf$fta<-scale(newdf$fta)
+newdf$ftpercent<-scale(newdf$ftpercent)
+newdf$orb<-scale(newdf$orb)
+newdf$drb<-scale(newdf$drb)
+newdf$trb<-scale(newdf$trb)
+newdf$ast<-scale(newdf$ast)
+newdf$stl<-scale(newdf$stl)
+newdf$blk<-scale(newdf$blk)
+newdf$tov<-scale(newdf$tov)
+newdf$pf<-scale(newdf$pf)
+newdf$pts<-scale(newdf$pts)
+newdf$tspercent<-scale(newdf$tspercent)
+newdf$ftr<-scale(newdf$ftr)
+newdf$orbpercent<-scale(newdf$orbpercent)
+newdf$drbpercent<-scale(newdf$drbpercent)
+newdf$trbpercent<-scale(newdf$trbpercent)
+newdf$astpercent<-scale(newdf$astpercent)
+newdf$stlpercent<-scale(newdf$stlpercent)
+newdf$blkpercent<-scale(newdf$blkpercent)
+newdf$tovpercent<-scale(newdf$tovpercent)
+newdf$obpm<-scale(newdf$obpm)
+newdf$dbpm<-scale(newdf$dbpm)
+newdf$bpm<-scale(newdf$bpm)
+newdf$vorp<-scale(newdf$vorp)
+
+nba.pca2 <- princomp(x=na.omit(newdf[,2:37]),cor=TRUE)
+
+names(nba.pca2)
+
+pc2.1 <- nba.pca2$loadings[,1];
+pc2.1
+pc2.2 <- nba.pca2$loadings[,2];
+pc2.2
+names(pc2.1)
+names(pc2.2)
+
+
+plot(pc2.1,pc2.2)
+plot(nba.pca2)
+
+# Make Scree Plot
+scree.values2 <- (nba.pca2$sdev^2)/sum(nba.pca2$sdev^2)
+scree.values2
+
+fviz_screeplot(nba.pca2,addlabels=TRUE)
+
+#4 dimensions seems to be where the difference becomes very marginal.
+
+#let's cluster off of those values
+
+
+nbapca.scores2 <- as.data.frame(nba.pca2$scores)
+nbapca.scores2
+
+#return.scores <- as.data.frame(returns.pca$scores);
+
+nbavar2<-get_pca_var(nba.pca2)
+#1st PCA
+fviz_contrib(nba.pca2,choice="var",axes=1,top=10)
+#2nd PCA
+fviz_contrib(nba.pca2,choice="var",axes=2,top=10)
+#3rd PCA
+fviz_contrib(nba.pca2,choice="var",axes=3,top=10)
+#4th PCA
+fviz_contrib(nba.pca2,choice="var",axes=4,top=10)
+#5th PCA
+fviz_contrib(nba.pca2,choice="var",axes=5,top=10)
+#6th PCA
+fviz_contrib(nba.pca2,choice="var",axes=6,top=10)
+#7th PCA
+fviz_contrib(nba.pca2,choice="var",axes=7,top=10)
+#8th PCA
+fviz_contrib(nba.pca2,choice="var",axes=8,top=10)
+#9th PCA
+fviz_contrib(nba.pca2,choice="var",axes=9,top=10)
+#10th PCA
+fviz_contrib(nba.pca2,choice="var",axes=10,top=10)
+
+newdf$rownames<-row.names(newdf)
+newdf1<-newdf
+
+newdf1$player<-row.names(newdf1[,1])
+newdf1<-na.omit(newdf1[,1:39])
+
+newdf1$player<-as.numeric(newdf1$player)
+newdf1$rownames<-as.numeric(newdf1$rownames)
+#str(df1)
+
+#df1<-scale(df1)
+new_kpergame<-na.omit(newdf1[,2:37])
+#kerpgame<-scale(kpergame)
+
+
+#check 5 to see how it is scattered; lot of overlap. 
+newk1<-kmeans(new_kpergame,centers=5)
+newk1
+fviz_cluster(newk1,data=new_kpergame,geom="point")
+
+#optimize amount of clusters
+fviz_nbclust(new_kpergame,kmeans, method = "wss")
+
+
+
+
+#mirrors our scree plot; using "elbow technique" it looks like 7 has the significant drop-off point
+newk2<-kmeans(new_kpergame,center=7)
+print(newk2)
+
+#sum of squares by cluster is 53.1%, which is really low; let's find a higher score
+
+fviz_cluster(newk2,data=new_kpergame,geom="point")
+
+#using PCA
+#k3<-kmeans(kpergame,center=8)
+#print(k3)
+
+
+#####Let's use the PCA to optimize the clusters & join back to the df dataset ####
+
+#nba.pca
+nbapca.score2<-subset(nbapca.scores2,select=c("Comp.1","Comp.2","Comp.3","Comp.4","Comp.5","Comp.6","Comp.7","Comp.8","Comp.9","Comp.10"))
+
+fviz_nbclust(nbapca.score2,kmeans, method = "wss")
+
+k4<-kmeans(nbapca.score2,centers=7)
+print(k4)
+#k5<-kmeans(nbapca.score2,centers=8)
+
+fviz_cluster(k4,data=new_kpergame,geom="point")
+#fviz_cluster(k5,data=kpergame,geom="point")
+
+
+
+
+opt_cluster<-k4$cluster
+
+opt_cluster<-data.table(rownames(k4$cluster),k4$cluster)
+opt_cluster$rownames<-seq.int(nrow(opt_cluster))
+
+newdf2<-subset(pergame,pergame$g >= 30)
+
+#take out percent values #
+
+newdf2<-subset(newdf2,select=c("player","pos","age","tm","mp","fg","fga","fgpercent","x3p","x3pa","x3ppercent","x2p","x2pa","x2ppercent","efgpercent","ft","fta","ftpercent","orb","drb","trb","ast","stl","blk","tov","pf","pts","tspercent","ftr","orbpercent","drbpercent","trbpercent","astpercent","stlpercent","blkpercent","tovpercent","obpm","dbpm","bpm","vorp","yr"))
+
+
+newdf2<-na.omit(newdf2[,1:41])
+
+newdf2$rownames<-row.names(newdf2)
+
+#df1$player<-row.names(df1[,1])
+
+str(newdf2)
+
+newdf2$rownames<-as.integer(newdf2$rownames)
+opt_cluster$rownames<-as.integer(opt_cluster$rownames)
+
+str(opt_cluster)
+newdf2<- newdf2 %>%
+  inner_join(opt_cluster,newdf2,by="rownames")
+
+newdf2
+
+#1 
+first_cluster<-subset(newdf2,newdf2$V1 == '1')
+first_cluster
+#2
+second_cluster<-subset(newdf2,newdf2$V1 == '2')
+second_cluster<-subset(second_cluster,second_cluster$yr == '2019')
+second_cluster
+#3
+third_cluster<-subset(newdf2,newdf2$V1 == '3')
+third_cluster
+#4
+fourth_cluster<-subset(newdf2,newdf2$V1 == '4')
+fourth_cluster
+#5th
+fifth_cluster<-subset(newdf2,newdf2$V1 == '5')
+fifth_cluster
+#6th
+sixth_cluster<-subset(newdf2,newdf2$V1 == '6')
+sixth_cluster
+#7th cluster
+seventh_cluster<-subset(newdf2,newdf2$V1 == '7')
+seventh_cluster
+
+
+
+
+```
+
+
+```{r mod4}
+
+blzer_df<-subset(newdf2,newdf2$tm == 'POR')
+blzer_df<-subset(blzer_df,blzer_df$yr == '2019')
+blzer_df
+
+current_blzr<-subset(current,current$tm == 'POR')
+
+newdf3<-subset(newdf2,select=c("player","pos","tm","V1","yr"))
+newdf3<-subset(newdf3,newdf3$yr == '2019')
+
+newdf3<-subset(newdf3,newdf3$player %in% c("Carmelo Anthony","Trevor Ariza","	Moses Brown","Zach Collins","Wenyen Gabriel","Mario Hezonja","Jaylen Hoard","Rodney Hood","Damian Lillard","Nassir Little","CJ McCollum","Anfernee Simons","Caleb Swanigan","Gary Trent","Hassan Whiteside","Jusuf Nurkić"))
+
+
+newdf3
+
+formattable(newdf3, align = c("l", "c", "c", "c", "c", "r"),
+            list(`Indicator Name` = formatter("span", style = ~style(color = "grey", font.weight = "bold"))
+            ))
+#Nurkic is 6 
+
+
+```
